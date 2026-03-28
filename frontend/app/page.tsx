@@ -93,7 +93,7 @@ export default function Home() {
         body: JSON.stringify({ email }),
       });
 
-      const data = await res.json();
+      const data = await res.json() as { needsSignIn: boolean };
 
       if (data.needsSignIn) {
         sessionStorage.setItem('pendingSubscription', JSON.stringify({
@@ -120,7 +120,7 @@ export default function Home() {
       });
 
       if (!subRes.ok) throw new Error('Failed to create subscription');
-      const subData = await subRes.json();
+      const subData = await subRes.json() as { dev_confirm_url?: string };
       if (subData.dev_confirm_url) setDevConfirmUrl(subData.dev_confirm_url);
       setSuccess(true);
     } catch {

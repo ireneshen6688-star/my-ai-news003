@@ -24,7 +24,7 @@ export default function TestPage() {
   const fetchSubs = async () => {
     setLoading(true);
     const res = await fetch('/api/subscriptions');
-    const data = await res.json();
+    const data = await res.json() as { subscriptions: Subscription[] };
     setSubs(data.subscriptions || []);
     setLoading(false);
   };
@@ -35,7 +35,7 @@ export default function TestPage() {
     setSending(true);
     setResult('');
     const res = await fetch('/api/send-digest', { method: 'POST' });
-    const data = await res.json();
+    const data = await res.json() as Record<string, unknown>;
     setResult(JSON.stringify(data, null, 2));
     setSending(false);
   };
