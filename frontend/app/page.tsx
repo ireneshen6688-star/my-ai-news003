@@ -102,25 +102,6 @@ export default function Home() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json() as { needsSignIn: boolean };
-
-      if (data.needsSignIn) {
-        sessionStorage.setItem('pendingSubscription', JSON.stringify({
-          keywords: keywords.trim(),
-          categories: selectedCategories,
-          frequency,
-          email,
-        }));
-        window.location.href = '/api/auth/signin?provider=google&callbackUrl=/subscribe/confirm';
-        return;
-      }
-
       const subRes = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
