@@ -4,37 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 export default function RegisterPage() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!name || !email || !password) { setError('Please fill in all fields.'); return; }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    if (password !== confirm) { setError('Passwords do not match.'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Invalid email address.'); return; }
-
-    setLoading(true);
-    try {
-      // TODO: call POST /api/auth/register { name, email, password }
-      // then signIn('credentials', { email, password })
-      await new Promise(r => setTimeout(r, 800)); // mock delay
-      window.location.href = '/';
-    } catch {
-      setError('Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleGoogleRegister = () => {
-    // TODO: signIn('google', { callbackUrl: '/' })
-    window.location.href = '/api/auth/signin?provider=google&callbackUrl=/';
+    setLoading(true);
+    window.location.href = '/api/auth/google';
   };
 
   return (
@@ -59,85 +33,25 @@ export default function RegisterPage() {
             </Link>
           </p>
 
-          {/* Google sign-up */}
           <button
             onClick={handleGoogleRegister}
-            className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors mb-4"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-xl py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition-colors"
           >
-            <GoogleIcon />
-            Continue with Google
+            {loading ? (
+              <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            ) : (
+              <GoogleIcon />
+            )}
+            {loading ? 'Redirecting to Google…' : 'Continue with Google'}
           </button>
 
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-xs text-gray-400">or</span>
-            <div className="flex-1 h-px bg-gray-100" />
-          </div>
-
-          {/* Registration form */}
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Your name"
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
-              <input
-                type="password"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                placeholder="Repeat your password"
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-600">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary hover:bg-blue-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition-colors"
-            >
-              {loading ? 'Creating account…' : 'Create account'}
-            </button>
-
-            <p className="text-xs text-gray-400 text-center">
-              By signing up, you agree to our{' '}
-              <a href="/terms" className="underline hover:text-gray-600">Terms</a>
-              {' '}and{' '}
-              <a href="/privacy" className="underline hover:text-gray-600">Privacy Policy</a>.
-            </p>
-          </form>
+          <p className="text-xs text-gray-400 text-center mt-6">
+            By signing up, you agree to our{' '}
+            <a href="/terms" className="underline hover:text-gray-600">Terms</a>
+            {' '}and{' '}
+            <a href="/privacy" className="underline hover:text-gray-600">Privacy Policy</a>.
+          </p>
         </div>
       </div>
 

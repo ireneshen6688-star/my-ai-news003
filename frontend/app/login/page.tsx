@@ -1,33 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!email || !password) { setError('Please fill in all fields.'); return; }
-    setLoading(true);
-    try {
-      // TODO: call NextAuth signIn('credentials', { email, password })
-      await new Promise(r => setTimeout(r, 800)); // mock delay
-      window.location.href = '/';
-    } catch {
-      setError('Invalid email or password.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Read ?error= from URL and show friendly message
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get('error');
+    if (err === 'oauth_state_mismatch') setError('Login session expired. Please try again.');
+    else if (err === 'oauth_missing_params') setError('OAuth params missing. Please try again.');
+    else if (err === 'oauth_failed') setError('Google login failed. Please try again.');
+    else if (err === 'no_email') setError('Could not retrieve email from Google. Please try again.');
+    else if (err === 'db_error') setError('Account setup failed. Please try again.');
+    else if (err) setError(`Login error: ${err}`);
+  }, []);
 
   const handleGoogleLogin = () => {
-    // TODO: signIn('google', { callbackUrl: '/' })
-    window.location.href = '/api/auth/signin?provider=google&callbackUrl=/';
+    setLoading(true);
+    window.location.href = '/api/auth/google';
   };
 
   return (
@@ -52,63 +46,29 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          {/* Google sign-in */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 mb-4">
+              {error}
+            </div>
+          )}
+
+          {/* Google sign-in — the only login method */}
           <button
             onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors mb-4"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-xl py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition-colors"
           >
-            <GoogleIcon />
-            Continue with Google
+            {loading ? (
+              <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            ) : (
+              <GoogleIcon />
+            )}
+            {loading ? 'Redirecting to Google…' : 'Continue with Google'}
           </button>
 
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-xs text-gray-400">or</span>
-            <div className="flex-1 h-px bg-gray-100" />
-          </div>
-
-          {/* Email / password form */}
-          <form onSubmit={handleEmailLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-            <div>
-              <div className="flex justify-between mb-1">
-                <label className="text-sm font-medium text-gray-700">Password</label>
-                <a href="/forgot-password" className="text-xs text-primary hover:underline">
-                  Forgot password?
-                </a>
-              </div>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-600">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary hover:bg-blue-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition-colors"
-            >
-              {loading ? 'Signing in…' : 'Sign in'}
-            </button>
-          </form>
+          <p className="text-xs text-gray-400 text-center mt-6">
+            We only use Google to verify your identity. We don&apos;t post anything on your behalf.
+          </p>
         </div>
       </div>
 

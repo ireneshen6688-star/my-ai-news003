@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const CATEGORIES = [
   { label: 'AI & Tech', value: 'ai-tech', emoji: '🤖' },
@@ -30,23 +30,38 @@ const WEEKDAYS = [
 // Month dates 1–28 (safe for all months)
 const MONTH_DATES = Array.from({ length: 28 }, (_, i) => i + 1);
 
-// Mock session — replace with real NextAuth useSession() once auth is wired up
-function useMockSession() {
-  // TODO: replace with:
-  //   import { useSession, signIn, signOut } from 'next-auth/react';
-  //   return useSession();
-  return { user: null as null | { name: string; email: string; image?: string } };
+interface SessionUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
+
+/** Fetch current user from session cookie via /api/auth/me */
+function useSession() {
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() as Promise<{ user: SessionUser | null }> : { user: null })
+      .then(data => setUser(data.user))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { user, loading };
 }
 
 export default function Home() {
-  const { user } = useMockSession();
+  const { user, loading: sessionLoading } = useSession();
 
   const [keywords, setKeywords] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [frequency, setFrequency] = useState('daily');
   const [weekday, setWeekday] = useState(1);       // 1 = Monday
   const [monthDate, setMonthDate] = useState(1);   // 1st of month
-  const [email, setEmail] = useState(user?.email ?? '');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -67,9 +82,9 @@ export default function Home() {
     window.location.href = '/register';
   };
 
-  const handleSignOut = () => {
-    // TODO: signOut()
-    window.location.href = '/api/auth/signout';
+  const handleSignOut = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login';
   };
 
   const handleConfirm = async () => {
@@ -135,6 +150,7 @@ export default function Home() {
       <div className="min-h-screen bg-background flex flex-col">
         <Header
           user={user}
+          sessionLoading={sessionLoading}
           showUserMenu={showUserMenu}
           setShowUserMenu={setShowUserMenu}
           onSignIn={handleSignIn}
@@ -179,6 +195,7 @@ export default function Home() {
     <div className="min-h-screen bg-background flex flex-col">
       <Header
         user={user}
+        sessionLoading={sessionLoading}
         showUserMenu={showUserMenu}
         setShowUserMenu={setShowUserMenu}
         onSignIn={handleSignIn}
@@ -362,7 +379,8 @@ export default function Home() {
 /* ─── Header Component ─────────────────────────────────────────── */
 
 interface HeaderProps {
-  user: { name: string; email: string; image?: string } | null;
+  user: { name: string; email: string; avatar?: string } | null;
+  sessionLoading?: boolean;
   showUserMenu: boolean;
   setShowUserMenu: (v: boolean) => void;
   onSignIn: () => void;
@@ -370,7 +388,7 @@ interface HeaderProps {
   onSignOut: () => void;
 }
 
-function Header({ user, showUserMenu, setShowUserMenu, onSignIn, onSignUp, onSignOut }: HeaderProps) {
+function Header({ user, sessionLoading, showUserMenu, setShowUserMenu, onSignIn, onSignUp, onSignOut }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
       <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -382,15 +400,17 @@ function Header({ user, showUserMenu, setShowUserMenu, onSignIn, onSignUp, onSig
 
         {/* Right side: auth */}
         <div className="relative">
-          {user ? (
+          {sessionLoading ? (
+            <div className="w-24 h-8 bg-gray-100 rounded-lg animate-pulse" />
+          ) : user ? (
             <>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 hover:border-gray-300 transition-colors"
               >
-                {user.image ? (
+                {user.avatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.image} alt={user.name} className="w-6 h-6 rounded-full" />
+                  <img src={user.avatar} alt={user.name} className="w-6 h-6 rounded-full" />
                 ) : (
                   <span className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-semibold">
                     {user.name.charAt(0).toUpperCase()}

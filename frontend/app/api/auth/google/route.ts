@@ -1,15 +1,23 @@
+/**
+ * app/api/auth/google/route.ts
+ * Step 1: Redirect user to Google OAuth consent screen
+ */
+
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Google } from 'arctic';
 import { generateState, generateCodeVerifier } from 'arctic';
+import { getGoogleClient } from '@/lib/auth';
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://myainews.club/api/auth/callback/google';
+// Detect whether we're running over HTTPS
+function isSecure(req: NextRequest): boolean {
+  const proto = req.headers.get('x-forwarded-proto');
+  if (proto) return proto === 'https';
+  return req.url.startsWith('https://');
+}
 
 export async function GET(req: NextRequest) {
-  const google = new Google(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+  const google = getGoogleClient();
   const state = generateState();
   const codeVerifier = generateCodeVerifier();
 
@@ -19,18 +27,20 @@ export async function GET(req: NextRequest) {
     'email',
   ]);
 
+  const secure = isSecure(req);
   const response = NextResponse.redirect(url.toString());
 
+  // NOTE: secure=false when running over plain HTTP (e.g. dev on IP:port)
   response.cookies.set('google_oauth_state', state, {
     httpOnly: true,
-    secure: true,
+    secure,
     sameSite: 'lax',
     maxAge: 600,
     path: '/',
   });
   response.cookies.set('google_code_verifier', codeVerifier, {
     httpOnly: true,
-    secure: true,
+    secure,
     sameSite: 'lax',
     maxAge: 600,
     path: '/',
