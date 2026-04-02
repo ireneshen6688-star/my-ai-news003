@@ -30,6 +30,11 @@ const WEEKDAYS = [
 // Month dates 1–28 (safe for all months)
 const MONTH_DATES = Array.from({ length: 28 }, (_, i) => i + 1);
 
+// Hours 0–23
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+// Minutes: 00, 15, 30, 45
+const MINUTES = [0, 15, 30, 45];
+
 interface SessionUser {
   id: string;
   name: string;
@@ -61,6 +66,8 @@ export default function Home() {
   const [frequency, setFrequency] = useState('daily');
   const [weekday, setWeekday] = useState(1);       // 1 = Monday
   const [monthDate, setMonthDate] = useState(1);   // 1st of month
+  const [sendHour, setSendHour] = useState(8);     // default 8:00 AM
+  const [sendMinute, setSendMinute] = useState(0);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -111,6 +118,8 @@ export default function Home() {
           frequency,
           weekday: frequency === 'weekly' ? weekday : undefined,
           monthDate: frequency === 'monthly' ? monthDate : undefined,
+          sendHour,
+          sendMinute,
           email,
         }),
       });
@@ -309,10 +318,51 @@ export default function Home() {
             )}
           </div>
 
-          {/* Step 4: Email */}
+          {/* Step 4: Delivery time */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              4. Delivery time <span className="text-gray-400 font-normal">(your local time)</span>
+            </label>
+            <div className="flex items-center gap-3">
+              {/* Hour selector */}
+              <div className="flex-1">
+                <select
+                  value={sendHour}
+                  onChange={e => setSendHour(Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                >
+                  {HOURS.map(h => (
+                    <option key={h} value={h}>
+                      {String(h).padStart(2, '0')}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="text-gray-400 text-sm font-medium">:</span>
+              {/* Minute selector */}
+              <div className="flex-1">
+                <select
+                  value={sendMinute}
+                  onChange={e => setSendMinute(Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                >
+                  {MINUTES.map(m => (
+                    <option key={m} value={m}>
+                      {String(m).padStart(2, '0')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="text-sm text-gray-500 whitespace-nowrap">
+                → {String(sendHour).padStart(2, '0')}:{String(sendMinute).padStart(2, '0')}
+              </span>
+            </div>
+          </div>
+
+          {/* Step 5: Email */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              4. Delivery email
+              5. Delivery email
             </label>
             <input
               type="email"

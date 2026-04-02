@@ -2,20 +2,70 @@ export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestContext } from '@cloudflare/next-on-pages';
+import { computeNextRunAt } from '@/lib/scheduleUtils';
+import type { Frequency } from '@/lib/scheduleUtils';
+
+interface SubscriptionRow {
+  id: string;
+  frequency: string;
+  weekday: number | null;
+  month_date: number | null;
+  send_hour: number;
+  send_minute: number;
+}
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
-  if (!token) return new NextResponse(html('❌ Invalid link', 'No token provided.', '#e53e3e'), { status: 400, headers: { 'Content-Type': 'text/html' } });
+  if (!token) {
+    return new NextResponse(html('❌ Invalid link', 'No token provided.', '#e53e3e'), {
+      status: 400, headers: { 'Content-Type': 'text/html' },
+    });
+  }
 
   const { env } = getRequestContext();
   const db: D1Database = (env as unknown as { DB: D1Database }).DB;
 
-  const sub = await db.prepare('SELECT * FROM subscriptions WHERE confirm_token = ?').bind(token).first();
-  if (!sub) return new NextResponse(html('❌ Not found', 'This confirmation link is invalid or already used.', '#e53e3e'), { status: 404, headers: { 'Content-Type': 'text/html' } });
+  const sub = await db
+    .prepare('SELECT id, frequency, weekday, month_date, send_hour, send_minute FROM subscriptions WHERE confirm_token = ?')
+    .bind(token)
+    .first<SubscriptionRow>();
 
-  await db.prepare('UPDATE subscriptions SET confirmed = 1, confirm_token = NULL WHERE confirm_token = ?').bind(token).run();
+  if (!sub) {
+    return new NextResponse(
+      html('❌ Not found', 'This confirmation link is invalid or already used.', '#e53e3e'),
+      { status: 404, headers: { 'Content-Type': 'text/html' } },
+    );
+  }
 
-  return new NextResponse(html('✅ Confirmed!', "You're all set. Your first digest will arrive soon.", '#38a169'), { headers: { 'Content-Type': 'text/html' } });
+  // Compute the first next_run_at now that the subscription is confirmed
+  const nextRunAt = computeNextRunAt({
+    frequency: (sub.frequency || 'daily') as Frequency,
+    weekday: sub.weekday,
+    month_date: sub.month_date,
+    send_hour: sub.send_hour ?? 8,
+    send_minute: sub.send_minute ?? 0,
+  });
+
+  await db
+    .prepare(`
+      UPDATE subscriptions
+      SET confirmed = 1,
+          confirm_token = NULL,
+          next_run_at = ?
+      WHERE confirm_token = ?
+    `)
+    .bind(nextRunAt, token)
+    .run();
+
+  const nextDate = new Date(nextRunAt * 1000).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    timeZone: 'UTC', timeZoneName: 'short',
+  });
+
+  return new NextResponse(
+    html('✅ Confirmed!', `You're all set. Your first digest will arrive on ${nextDate}.`, '#38a169'),
+    { headers: { 'Content-Type': 'text/html' } },
+  );
 }
 
 function html(title: string, body: string, color: string) {

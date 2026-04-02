@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, sent: 0, message: 'No confirmed subscriptions.' });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.headers.get('origin') || 'http://localhost:3000';
+    const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const details: Array<{ email: string; articles: number; status: string; error?: string }> = [];
 
     for (const sub of subs) {

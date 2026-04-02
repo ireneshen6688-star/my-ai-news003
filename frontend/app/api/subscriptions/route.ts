@@ -2,12 +2,26 @@ export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestContext } from '@cloudflare/next-on-pages';
+import { parseSessionToken } from '@/lib/auth';
 import { sendConfirmEmail } from '@/lib/mailer';
+import { computeNextRunAt } from '@/lib/scheduleUtils';
+import type { Frequency } from '@/lib/scheduleUtils';
+
+// ── POST /api/subscriptions — create a new subscription ──────────────────
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { keywords: string; categories: string[]; frequency: string; weekday?: number; monthDate?: number; email: string };
-    const { keywords, categories, frequency, weekday, monthDate, email } = body;
+    const body = await req.json() as {
+      keywords: string;
+      categories: string[];
+      frequency: string;
+      weekday?: number;
+      monthDate?: number;
+      sendHour?: number;
+      sendMinute?: number;
+      email: string;
+    };
+    const { keywords, categories, frequency, weekday, monthDate, sendHour, sendMinute, email } = body;
 
     if (!email || (!keywords && (!categories || categories.length === 0))) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -16,23 +30,53 @@ export async function POST(req: NextRequest) {
     const { env } = getRequestContext();
     const db: D1Database = (env as unknown as { DB: D1Database }).DB;
 
+    // Resolve logged-in user (optional — anonymous subs allowed at this stage)
+    const sessionToken = req.cookies.get('session')?.value;
+    let userId: string | null = null;
+    if (sessionToken) {
+      const session = await parseSessionToken(sessionToken);
+      if (session) userId = session.userId;
+    }
+
     const id = crypto.randomUUID();
     const confirmToken = crypto.randomUUID();
     const unsubscribeToken = crypto.randomUUID();
 
+    const h = sendHour ?? 8;
+    const m = sendMinute ?? 0;
+    const freq = (frequency || 'daily') as Frequency;
+
+    // Pre-compute next_run_at (will be "armed" properly on confirmation)
+    const nextRunAt = computeNextRunAt({
+      frequency: freq,
+      weekday: weekday ?? null,
+      month_date: monthDate ?? null,
+      send_hour: h,
+      send_minute: m,
+    });
+
     await db.prepare(`
       INSERT INTO subscriptions
-        (id, email, keywords, categories, frequency, weekday, month_date, confirmed, confirm_token, unsubscribe_token)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+        (id, user_id, email, keywords, categories, frequency, weekday, month_date,
+         send_hour, send_minute, confirmed, confirm_token, unsubscribe_token, next_run_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
     `).bind(
-      id, email, keywords || '',
+      id,
+      userId,
+      email,
+      keywords || '',
       JSON.stringify(categories || []),
-      frequency || 'daily',
-      weekday ?? null, monthDate ?? null,
-      confirmToken, unsubscribeToken,
+      freq,
+      weekday ?? null,
+      monthDate ?? null,
+      h,
+      m,
+      confirmToken,
+      unsubscribeToken,
+      nextRunAt,
     ).run();
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.headers.get('origin') || 'http://localhost:3000';
+    const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const confirmUrl = `${baseUrl}/api/confirm?token=${confirmToken}`;
 
     try {
@@ -52,11 +96,50 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// ── GET /api/subscriptions — list subscriptions for the current user ──────
+//
+// Rules:
+//   - Must be logged in (401 if not)
+//   - Returns ONLY subscriptions belonging to the current user
+//   - Falls back to email-match if user_id is null (legacy rows created before login)
+
 export async function GET(req: NextRequest) {
+  // Require session
+  const sessionToken = req.cookies.get('session')?.value;
+  if (!sessionToken) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const session = await parseSessionToken(sessionToken);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { env } = getRequestContext();
     const db: D1Database = (env as unknown as { DB: D1Database }).DB;
-    const result = await db.prepare('SELECT * FROM subscriptions ORDER BY created_at DESC').all();
+
+    // Fetch the user's email so we can also match legacy rows (user_id = NULL)
+    const user = await db
+      .prepare('SELECT id, email FROM users WHERE id = ?')
+      .bind(session.userId)
+      .first<{ id: string; email: string }>();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Return rows where user_id matches OR (user_id is null AND email matches)
+    const result = await db
+      .prepare(`
+        SELECT * FROM subscriptions
+        WHERE user_id = ?
+           OR (user_id IS NULL AND email = ?)
+        ORDER BY created_at DESC
+      `)
+      .bind(user.id, user.email)
+      .all();
+
     return NextResponse.json({ subscriptions: result.results });
   } catch (e) {
     console.error(e);

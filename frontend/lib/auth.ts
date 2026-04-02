@@ -107,9 +107,9 @@ export async function upsertUser({
   name,
   avatar,
 }: UpsertUserParams): Promise<string> {
-  // Ensure table exists
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
+  // Ensure table exists (use prepare().run() — D1 exec() doesn't support multi-line DDL)
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       name TEXT,
@@ -117,8 +117,8 @@ export async function upsertUser({
       provider TEXT,
       provider_id TEXT,
       created_at INTEGER DEFAULT (unixepoch())
-    )
-  `);
+    )`
+  ).run();
 
   // Check by provider+providerId first
   const byProvider = await db

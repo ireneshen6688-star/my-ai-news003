@@ -86,6 +86,8 @@ export async function GET(req: NextRequest) {
     return response;
   } catch (e) {
     console.error('[OAuth] Callback error:', e);
-    return NextResponse.redirect(new URL('/login?error=oauth_failed', req.url));
+    // Expose real error in URL for debugging (remove in production)
+    const errMsg = encodeURIComponent(String(e).slice(0, 200));
+    return NextResponse.redirect(new URL(`/login?error=oauth_failed&detail=${errMsg}`, req.url));
   }
 }
