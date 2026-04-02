@@ -1,3 +1,67 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-color: #FAF9FF;
+    color: #1a1625;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card */
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-sm border border-white/60 shadow-soft rounded-3xl;
+  }
+
+  /* Primary gradient button */
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold rounded-2xl
+           px-6 py-3 hover:opacity-90 active:scale-[0.98] transition-all shadow-soft;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply border border-border text-gray-600 font-medium rounded-2xl
+           px-5 py-2.5 hover:bg-muted hover:border-primary-200 transition-all;
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full border border-border bg-white rounded-2xl px-4 py-3 text-sm text-gray-800
+           placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-300
+           focus:border-primary-300 transition-all;
+  }
+
+  /* Section card */
+  .section-card {
+    @apply bg-white border border-border rounded-3xl shadow-soft p-6;
+  }
+
+  /* Tag / badge */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+}
+
+/* Smooth gradient hero animation */
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hero-gradient-animated {
+  background: radial-gradient(ellipse 80% 60% at 50% -10%,
+    rgba(185,179,255,0.5) 0%,
+    rgba(240,124,160,0.22) 50%,
+    transparent 80%),
+    #FAF9FF;
+}
