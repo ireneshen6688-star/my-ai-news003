@@ -9,15 +9,8 @@ database_name = "my-ai-news-db"
 database_id = "30bac4c4-4f8e-4cd2-9186-9150f11bd8e3"
 
 # ── Cron Triggers ─────────────────────────────────────────────────────────────
-# Cloudflare runs these on UTC schedule and POSTs to /api/cron/digest.
-#
-# Strategy: run every 15 minutes so we can catch subscriptions scheduled at
-# any hour:minute combination without needing per-subscription cron jobs.
-# The handler itself filters by next_run_at <= now, so running frequently
-# is cheap (most calls return "no subscriptions due" immediately).
-#
-# Cron syntax: minute hour day-of-month month day-of-week
-# */15 * * * *  = every 15 minutes, 24/7
-
-[triggers]
-crons = ["*/15 * * * *"]
+# NOTE: Cloudflare Pages does NOT support [triggers] in wrangler.toml.
+# Cron must be configured manually in the Cloudflare Dashboard:
+#   Pages → my-ai-news003 → Settings → Functions → Cron Triggers
+#   Add: */15 * * * *  (every 15 minutes)
+# The cron will POST to /api/cron/digest automatically.
