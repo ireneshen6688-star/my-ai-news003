@@ -1,0 +1,13 @@
+name = "my-ai-news003-cron"
+main = "index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+PAGES_BASE_URL = "https://my-ai-news003.pages.dev"
+
+# CRON_SECRET is set as a secret (not in vars):
+# npx wrangler secret put CRON_SECRET
