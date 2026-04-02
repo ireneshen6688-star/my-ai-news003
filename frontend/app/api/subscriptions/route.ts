@@ -7,6 +7,8 @@ import { sendConfirmEmail } from '@/lib/mailer';
 import { computeNextRunAt } from '@/lib/scheduleUtils';
 import type { Frequency } from '@/lib/scheduleUtils';
 import { checkKeywords } from '@/lib/contentFilter';
+import { canAddMoreKeywords } from '@/lib/planLimits';
+import type { Plan } from '@/lib/planLimits';
 
 // ── POST /api/subscriptions — create a new subscription ──────────────────
 
@@ -42,9 +44,34 @@ export async function POST(req: NextRequest) {
     // Resolve logged-in user (optional — anonymous subs allowed at this stage)
     const sessionToken = req.cookies.get('session')?.value;
     let userId: string | null = null;
+    let userPlan: Plan = 'free';
     if (sessionToken) {
       const session = await parseSessionToken(sessionToken);
-      if (session) userId = session.userId;
+      if (session) {
+        userId = session.userId;
+        const userRow = await db
+          .prepare('SELECT plan FROM users WHERE id = ?')
+          .bind(userId)
+          .first<{ plan: string }>();
+        userPlan = (userRow?.plan || 'free') as Plan;
+      }
+    }
+
+    // Plan limit check: count existing confirmed subscriptions for this user
+    if (userId) {
+      const countRow = await db
+        .prepare('SELECT COUNT(*) as cnt FROM subscriptions WHERE user_id = ? AND confirmed = 1')
+        .bind(userId)
+        .first<{ cnt: number }>();
+      const currentCount = countRow?.cnt ?? 0;
+      if (!canAddMoreKeywords(userPlan, currentCount)) {
+        return NextResponse.json({
+          error: userPlan === 'free'
+            ? 'Free plan allows 1 keyword subscription. Upgrade to Pro for up to 5.'
+            : 'You have reached the maximum number of subscriptions for your plan.',
+          upgradeTo: 'pro',
+        }, { status: 403 });
+      }
     }
 
     const id = crypto.randomUUID();

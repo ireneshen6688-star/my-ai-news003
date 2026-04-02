@@ -145,7 +145,14 @@ export default function Home() {
         }),
       });
 
-      if (!subRes.ok) throw new Error('Failed to create subscription');
+      if (!subRes.ok) {
+        const errData = await subRes.json() as { error?: string; upgradeTo?: string };
+        if (errData.upgradeTo === 'pro') {
+          window.location.href = '/upgrade';
+          return;
+        }
+        throw new Error(errData.error || 'Failed to create subscription');
+      }
       const subData = await subRes.json() as { dev_confirm_url?: string };
       if (subData.dev_confirm_url) setDevConfirmUrl(subData.dev_confirm_url);
       setSuccess(true);
@@ -487,6 +494,12 @@ function Header({ user, sessionLoading, showUserMenu, setShowUserMenu, onSignIn,
                   <div className="px-4 py-2 border-b border-gray-50">
                     <p className="text-xs text-gray-500 truncate">{user.email}</p>
                   </div>
+                  <a
+                    href="/news"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    News Feed
+                  </a>
                   <a
                     href="/dashboard"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
