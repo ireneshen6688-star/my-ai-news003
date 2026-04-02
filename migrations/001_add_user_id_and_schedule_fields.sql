@@ -1,23 +1,14 @@
--- Migration 001: Add user_id, send_hour, send_minute, last_successful_run_at, next_run_at to subscriptions
--- Run via: wrangler d1 execute my-ai-news-db --file=migrations/001_add_user_id_and_schedule_fields.sql
+-- Migration 001 (safe retry): Add user_id, scheduling fields to subscriptions
+-- D1 does not support IF NOT EXISTS on ALTER COLUMN, so we split into separate statements.
+-- Statements that fail with "duplicate column name" can be safely ignored.
 
--- Add user_id (nullable for now so existing rows don't break)
 ALTER TABLE subscriptions ADD COLUMN user_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN last_successful_run_at INTEGER;
+ALTER TABLE subscriptions ADD COLUMN next_run_at INTEGER;
+ALTER TABLE subscriptions ADD COLUMN consecutive_failures INTEGER NOT NULL DEFAULT 0;
 
--- Add send_hour / send_minute if not already present (may already exist in newer schema)
--- D1 will error if column exists — safe to ignore those errors
-ALTER TABLE subscriptions ADD COLUMN send_hour INTEGER NOT NULL DEFAULT 8;
-ALTER TABLE subscriptions ADD COLUMN send_minute INTEGER NOT NULL DEFAULT 0;
-
--- Scheduling tracking fields
-ALTER TABLE subscriptions ADD COLUMN last_successful_run_at INTEGER; -- unix epoch seconds
-ALTER TABLE subscriptions ADD COLUMN next_run_at INTEGER;            -- unix epoch seconds
-
--- Index for the cron job: quickly find due subscriptions
 CREATE INDEX IF NOT EXISTS idx_subscriptions_next_run_at
-  ON subscriptions (next_run_at, confirmed)
-  WHERE confirmed = 1;
+  ON subscriptions (next_run_at);
 
--- Index for user dashboard queries
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id
   ON subscriptions (user_id);

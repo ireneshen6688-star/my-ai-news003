@@ -6,6 +6,7 @@ import { parseSessionToken } from '@/lib/auth';
 import { sendConfirmEmail } from '@/lib/mailer';
 import { computeNextRunAt } from '@/lib/scheduleUtils';
 import type { Frequency } from '@/lib/scheduleUtils';
+import { checkKeywords } from '@/lib/contentFilter';
 
 // ── POST /api/subscriptions — create a new subscription ──────────────────
 
@@ -25,6 +26,14 @@ export async function POST(req: NextRequest) {
 
     if (!email || (!keywords && (!categories || categories.length === 0))) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Content filter — block inappropriate keywords
+    if (keywords) {
+      const filterResult = checkKeywords(keywords);
+      if (filterResult.blocked) {
+        return NextResponse.json({ error: filterResult.message }, { status: 400 });
+      }
     }
 
     const { env } = getRequestContext();

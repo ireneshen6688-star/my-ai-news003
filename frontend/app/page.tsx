@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { checkKeywordsZh } from '@/lib/contentFilter';
 
 const CATEGORIES = [
   { label: 'AI & Tech', value: 'ai-tech', emoji: '🤖' },
@@ -71,6 +72,7 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [keywordWarning, setKeywordWarning] = useState('');
   const [success, setSuccess] = useState(false);
   const [devConfirmUrl, setDevConfirmUrl] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -79,6 +81,16 @@ export default function Home() {
     setSelectedCategories(prev =>
       prev.includes(value) ? prev.filter(c => c !== value) : [...prev, value]
     );
+  };
+
+  const handleKeywordsChange = (value: string) => {
+    setKeywords(value);
+    if (value.trim()) {
+      const result = checkKeywordsZh(value);
+      setKeywordWarning(result.blocked ? (result.message ?? '') : '');
+    } else {
+      setKeywordWarning('');
+    }
   };
 
   const handleSignIn = () => {
@@ -100,6 +112,15 @@ export default function Home() {
     if (!keywords.trim() && selectedCategories.length === 0) {
       setError('Please enter at least one keyword or select a category.');
       return;
+    }
+
+    // Block inappropriate keywords before submitting
+    if (keywords.trim()) {
+      const filterResult = checkKeywordsZh(keywords);
+      if (filterResult.blocked) {
+        setError(filterResult.message ?? '');
+        return;
+      }
     }
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email address.');
@@ -215,10 +236,16 @@ export default function Home() {
             <input
               type="text"
               value={keywords}
-              onChange={e => setKeywords(e.target.value)}
+              onChange={e => handleKeywordsChange(e.target.value)}
               placeholder="e.g. ChatGPT, NVIDIA, climate change"
               className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
+            {keywordWarning && (
+              <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1">
+                <span>⚠️</span>
+                <span>{keywordWarning}</span>
+              </p>
+            )}
           </div>
 
           {/* Step 2: Categories */}
