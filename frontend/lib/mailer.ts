@@ -1,7 +1,12 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM || 'onboarding@resend.dev';
+
+function getResend(): Resend {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error('RESEND_API_KEY is not set');
+  return new Resend(key);
+}
 
 export async function sendConfirmEmail({
   to,
@@ -10,7 +15,7 @@ export async function sendConfirmEmail({
   to: string;
   confirmUrl: string;
 }) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: `My AI News <${FROM}>`,
     to,
     subject: 'Confirm your My AI News subscription',
@@ -46,7 +51,7 @@ export async function sendDigestEmail({
   keywords: string;
 }) {
   const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  return resend.emails.send({
+  return getResend().emails.send({
     from: `My AI News <${FROM}>`,
     to,
     subject: `📰 Your AI News Digest — ${keywords} (${date})`,

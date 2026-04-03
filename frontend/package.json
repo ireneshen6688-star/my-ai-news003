@@ -16,7 +16,7 @@
     "next": "^15.5.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "resend": "^6.9.4"
+    "resend": "^3.5.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260317.1",
