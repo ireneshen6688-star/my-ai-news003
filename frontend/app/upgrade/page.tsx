@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -11,7 +11,7 @@ interface SessionUser {
   plan?: string;
 }
 
-export default function UpgradePage() {
+function UpgradeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -190,5 +190,13 @@ export default function UpgradePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UpgradePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div className="text-sm text-gray-400">Loading…</div></div>}>
+      <UpgradeContent />
+    </Suspense>
   );
 }
